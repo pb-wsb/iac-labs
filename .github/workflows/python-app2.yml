@@ -35,7 +35,7 @@ jobs:
         shell: bash
 
       - name: Verify Poetry Installation
-        run: poetry --version
+        run: python3 -m poetry --version
 
       - name: Install Dependencies
         working-directory: ./example-app
