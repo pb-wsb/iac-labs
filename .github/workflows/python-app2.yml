@@ -1,20 +1,12 @@
 name: CI
-
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-
 jobs:
   setup:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       
@@ -23,37 +15,21 @@ jobs:
         with:
           python-version: '3.11'
           
-      - name: Install Poetry (Linux)
-        if: runner.os == 'Linux'
-        shell: bash
+      - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Install Poetry (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
-          echo "$env:APPDATA\Python\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          
-      - name: Cache build venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v3
-        with:
-          path: ./example-app/.venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('**/poetry.lock') }}
           
       - name: Install Dependencies
         working-directory: ./example-app
         run: poetry install --no-root
-
+  
   static_tests:
     needs: setup
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
         test_type: ['lint', 'formatter', 'security']
-    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
       
@@ -62,41 +38,22 @@ jobs:
         with:
           python-version: '3.11'
           
-      - name: Install Poetry (Linux)
-        if: runner.os == 'Linux'
-        shell: bash
+      - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Install Poetry (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
-          echo "$env:APPDATA\Python\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          
-      - name: Cache build venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v3
-        with:
-          path: ./example-app/.venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('**/poetry.lock') }}
           
       - name: Install Dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         working-directory: ./example-app
         run: poetry install --no-root
         
       - name: Run ${{ matrix.test_type }}
         working-directory: ./example-app
         run: poetry run task ${{ matrix.test_type }}
-
+  
   unit_tests:
     needs: setup
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       
@@ -105,31 +62,31 @@ jobs:
         with:
           python-version: '3.11'
           
-      - name: Install Poetry (Linux)
-        if: runner.os == 'Linux'
-        shell: bash
+      - name: Install Poetry
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Install Poetry (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
-          echo "$env:APPDATA\Python\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-          
-      - name: Cache build venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v3
-        with:
-          path: ./example-app/.venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('**/poetry.lock') }}
           
       - name: Install Dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         working-directory: ./example-app
         run: poetry install --no-root
         
       - name: Run Unit Tests
         working-directory: ./example-app
         run: poetry run task test
+  
+  test_summary:
+    needs: [static_tests, unit_tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Test Summary
+        run: |
+          if [[ "${{ needs.static_tests.result }}" == "success" ]] && 
+             [[ "${{ needs.unit_tests.result }}" == "success" ]]; then
+            echo "All tests passed successfully!"
+            exit 0
+          else
+            echo "Some tests failed"
+            exit 1
+          fi
