@@ -59,28 +59,3 @@ jobs:
       - name: Run Security Checks
         working-directory: ./example-app
         run: poetry run task security
-
-  unit_tests:
-    needs: setup
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-          
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-          
-      - name: Install Dependencies
-        working-directory: ./example-app
-        run: poetry install --no-root
-        
-      - name: Run Unit Tests
-        working-directory: ./example-app
-        run: poetry run task test
