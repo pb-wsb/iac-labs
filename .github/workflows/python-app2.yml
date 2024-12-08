@@ -7,10 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  build-dependencies:
+  build:
     runs-on: ubuntu-latest
-    concurrency:
-      group: build-dependencies-group
     steps:
       - uses: actions/checkout@v3
 
@@ -20,27 +18,25 @@ jobs:
           python-version: '3.11'
 
       - name: Cache Poetry dependencies
-        id: cached-poetry-dependencies
+        id: cache-dependencies
         uses: actions/cache@v3
         with:
           path: ./example-app/.venv
-          key: ${{ runner.os }}-poetry-venv-${{ hashFiles('example-app/poetry.lock') }}
-      
+          key: ${{ runner.os }}-poetry-${{ hashFiles('example-app/poetry.lock') }}
+
       - name: Install Poetry
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        if: steps.cache-dependencies.outputs.cache-hit != 'true'
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-      
+
       - name: Install Dependencies
         working-directory: ./example-app
         run: poetry install --no-root
 
-  static-tests:
+  lint:
     runs-on: ubuntu-latest
-    needs: build-dependencies
-    concurrency:
-      group: static-tests-group
+    needs: build
     steps:
       - uses: actions/checkout@v3
 
@@ -50,25 +46,63 @@ jobs:
           python-version: '3.11'
 
       - name: Cache Poetry dependencies
-        id: cached-poetry-dependencies
+        id: cache-dependencies
         uses: actions/cache@v3
         with:
           path: ./example-app/.venv
-          key: ${{ runner.os }}-poetry-venv-${{ hashFiles('example-app/poetry.lock') }}
+          key: ${{ runner.os }}-poetry-${{ hashFiles('example-app/poetry.lock') }}
 
-      - name: Run Static Code Analysis (Linter)
+      - name: Run Linter
         working-directory: ./example-app
         run: poetry run task lint
+
+  formatter:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Cache Poetry dependencies
+        id: cache-dependencies
+        uses: actions/cache@v3
+        with:
+          path: ./example-app/.venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('example-app/poetry.lock') }}
+
+      - name: Check Formatting
+        working-directory: ./example-app
+        run: poetry run task format-check
+
+  security:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Cache Poetry dependencies
+        id: cache-dependencies
+        uses: actions/cache@v3
+        with:
+          path: ./example-app/.venv
+          key: ${{ runner.os }}-poetry-${{ hashFiles('example-app/poetry.lock') }}
 
       - name: Run Security Tests
         working-directory: ./example-app
         run: poetry run task security
 
-  unit-tests:
+  unittests:
     runs-on: ubuntu-latest
-    needs: build-dependencies
-    concurrency:
-      group: unit-tests-group
+    needs: [lint, formatter, security]
     steps:
       - uses: actions/checkout@v3
 
@@ -78,11 +112,11 @@ jobs:
           python-version: '3.11'
 
       - name: Cache Poetry dependencies
-        id: cached-poetry-dependencies
+        id: cache-dependencies
         uses: actions/cache@v3
         with:
           path: ./example-app/.venv
-          key: ${{ runner.os }}-poetry-venv-${{ hashFiles('example-app/poetry.lock') }}
+          key: ${{ runner.os }}-poetry-${{ hashFiles('example-app/poetry.lock') }}
 
       - name: Run Unit Tests
         working-directory: ./example-app
