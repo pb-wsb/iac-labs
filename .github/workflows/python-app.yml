@@ -1,35 +1,27 @@
 name: Python application
-
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
-
-permissions:
-  contents: read
+    branches: [ main ]
 
 jobs:
-  install:
+  test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./example-app
-
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"  # Ustaw odpowiednią wersję Pythona
-
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Install dependencies
-        run: |
-          poetry install
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install Poetry
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        
+    - name: Install Dependencies
+      working-directory: ./example-app
+      run: poetry install --no-root
