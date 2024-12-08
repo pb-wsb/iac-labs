@@ -31,6 +31,11 @@ jobs:
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
           echo "$HOME/.local/bin" >> $GITHUB_PATH
+          echo "PATH=$HOME/.local/bin:\$PATH" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Verify Poetry Installation
+        run: poetry --version
 
       - name: Install Dependencies
         working-directory: ./example-app
