@@ -25,3 +25,16 @@ jobs:
     - name: Install Dependencies
       working-directory: ./example-app
       run: poetry install --no-root
+
+    - name: Run Static Code Analysis
+      working-directory: ./example-app
+      run: poetry run task lint
+      
+    - name: Run Security Tests
+      working-directory: ./example-app
+      run: poetry run task security
+      
+    - name: Run Unit Tests
+      working-directory: ./example-app
+      run: poetry run task test
+      
